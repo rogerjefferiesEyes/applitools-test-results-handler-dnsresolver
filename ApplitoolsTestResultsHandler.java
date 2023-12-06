@@ -1,4 +1,4 @@
-package com.applitools.results;
+package ApplitoolsTestResultHandler;
 
 import com.applitools.eyes.TestResults;
 import org.apache.http.HttpHost;
@@ -135,10 +135,10 @@ public class ApplitoolsTestResultsHandler {
     private DnsResolver dnsResolver = (DnsResolver) new SystemDefaultDnsResolver() {
         @Override
         public InetAddress[] resolve(final String host) throws UnknownHostException {
-            if (host.equalsIgnoreCase("domain.com")) {
+            if (host.equalsIgnoreCase("example.com")) {
                 /* If we match the host we're trying to talk to, 
                    return the IP address we want, not what is in DNS */
-                return new InetAddress[] { InetAddress.getByName("0.0.0.0") };
+                return new InetAddress[] { InetAddress.getByName("93.184.216.34") };
             } else {
                 /* Else, resolve it as we would normally */
                 return super.resolve(host);
@@ -149,16 +149,14 @@ public class ApplitoolsTestResultsHandler {
 
     public ApplitoolsTestResultsHandler(TestResults testResults, String viewKey, String proxyServer, String proxyPort, String proxyUser, String proxyPassword) throws Exception {
 
-        if ((proxyServer != null) && (proxyPort != null)) {
+    	if ((proxyServer != null) && (proxyPort != null)) {
+    		proxy = new HttpHost(proxyServer, Integer.parseInt(proxyPort));
             if ((proxyPassword != null) && (proxyUser != null)) {
                 Credentials credentials = new UsernamePasswordCredentials(proxyUser, proxyPassword);
                 AuthScope authScope = new AuthScope(proxyServer, Integer.parseInt(proxyPort));
                 credsProvider = new BasicCredentialsProvider();
 
                 credsProvider.setCredentials(authScope, credentials);
-            }
-            else {
-                proxy = new HttpHost(proxyServer, Integer.parseInt(proxyPort));
             }
         }
         this.applitoolsViewKey = viewKey;
@@ -323,24 +321,27 @@ public class ApplitoolsTestResultsHandler {
 
     private CloseableHttpClient getCloseableHttpClient() {
     	/* HttpClientConnectionManager allows us to use custom DnsResolver */
-    	BasicHttpClientConnectionManager connManager = new BasicHttpClientConnectionManager(
-    	        /* We're forced to create a SocketFactory Registry.  Passing null
-    	           doesn't force a default Registry, so we re-invent the wheel. */
-    	        RegistryBuilder.<ConnectionSocketFactory>create()
-    	            .register("http", PlainConnectionSocketFactory.getSocketFactory())
-    	            .register("https", SSLConnectionSocketFactory.getSocketFactory())
-    	            .build(), 
-    	        null, /* Default ConnectionFactory */ 
-    	        null, /* Default SchemePortResolver */ 
-    	        dnsResolver  /* Our DnsResolver */
-    	        );
+		BasicHttpClientConnectionManager connManager = new BasicHttpClientConnectionManager(
+				/*
+				 * We're forced to create a SocketFactory Registry. Passing null doesn't force a
+				 * default Registry, so we re-invent the wheel.
+				 */
+				RegistryBuilder.<ConnectionSocketFactory>create()
+						.register("http", PlainConnectionSocketFactory
+								.getSocketFactory())
+						.register("https", SSLConnectionSocketFactory.getSocketFactory()).build(),
+				null, /* Default ConnectionFactory */
+				null, /* Default SchemePortResolver */
+				dnsResolver /* Our DnsResolver */
+		);
         CloseableHttpClient client = null;
-        if (proxy != null)
-            client = HttpClientBuilder.create().setConnectionManager(connManager).setProxy(proxy).build();
-        else if (credsProvider != null)
-            client = HttpClientBuilder.create().setConnectionManager(connManager).setProxy(proxy).setDefaultCredentialsProvider(credsProvider).build();
-        else
+        if (proxy == null) {
             client = HttpClientBuilder.create().setConnectionManager(connManager).build();
+        } else if (credsProvider == null) {
+            client = HttpClientBuilder.create().setConnectionManager(connManager).setProxy(proxy).build();
+        } else {
+            client = HttpClientBuilder.create().setConnectionManager(connManager).setProxy(proxy).setDefaultCredentialsProvider(credsProvider).build();
+        }
         return client;
     }
     
@@ -356,6 +357,7 @@ public class ApplitoolsTestResultsHandler {
         initHttpsURLConnection();
         CloseableHttpResponse response = null;
         HttpGet get = new HttpGet(url);
+
         CloseableHttpClient client = getCloseableHttpClient();
         response = runLongRequest(get);
         InputStream is = response.getEntity().getContent();
@@ -931,23 +933,10 @@ public class ApplitoolsTestResultsHandler {
     }
 
     public CloseableHttpResponse sendRequest(HttpRequestBase apiCall, int retry, boolean delayBeforeRetry) throws InterruptedException {
-    	/* HttpClientConnectionManager allows us to use custom DnsResolver */
-    	BasicHttpClientConnectionManager connManager = new BasicHttpClientConnectionManager(
-    	        /* We're forced to create a SocketFactory Registry.  Passing null
-    	           doesn't force a default Registry, so we re-invent the wheel. */
-    	        RegistryBuilder.<ConnectionSocketFactory>create()
-    	            .register("http", PlainConnectionSocketFactory.getSocketFactory())
-    	            .register("https", SSLConnectionSocketFactory.getSocketFactory())
-    	            .build(), 
-    	        null, /* Default ConnectionFactory */ 
-    	        null, /* Default SchemePortResolver */ 
-    	        dnsResolver  /* Our DnsResolver */
-    	        );
-    	
-    	counter += 1;
+        counter += 1;
         String requestId = counter + "--" + UUID.randomUUID();
         apiCall.addHeader("x-applitools-eyes-client-request-id", requestId);
-        CloseableHttpClient client = HttpClientBuilder.create().setConnectionManager(connManager).build();
+        CloseableHttpClient client = getCloseableHttpClient();
         CloseableHttpResponse response;
 
         try {
