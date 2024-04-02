@@ -58,5 +58,3 @@ function expandIframes(rootDocument = document, isHorizontal = false) {
 }
 
 expandIframes(document, true);
-
-document.querySelector('div.nav-header').style.width = '100%';
