@@ -35,16 +35,23 @@ function getIframeChain(rootDocument, recursionLevel = 0) {
     return childIframeChain;
 }
 
-function expandIframes(rootDocument = document) {
-    rootDocument.querySelector('body').style.overflow = 'auto';
-    var iframes = getIframeChain(rootDocument);
-    for (iframeItem of iframes) {
-        var iframeElement = iframeItem.iframeElement;
-        var iframeScrollHeight = iframeElement.contentDocument.querySelector('html').scrollHeight;
-        setParentDimensions(iframeElement, iframeScrollHeight, iframeScrollWidth);
-        iframeElement.style.height = '100%';
-        expandIframes(iframeElement.contentDocument);
+function expandIframes(rootDocument = document, isHorizontal = false) {
+    if (rootDocument) {
+        rootDocument.querySelector('body').style.overflow = 'visible';
+        var iframes = getIframeChain(rootDocument);
+        for (iframeItem of iframes) {
+            var iframeElement = iframeItem.iframeElement;
+            if(iframeElement.contentDocument == null || iframeElement.style.display == 'none')
+                continue;
+            var iframeScrollHeight = iframeElement.contentDocument.querySelector('html').scrollHeight;
+            var iframeScrollWidth = isHorizontal ? iframeElement.contentDocument.querySelector('html').scrollWidth : 0;
+            setParentDimensions(iframeElement, iframeScrollHeight, iframeScrollWidth);
+            iframeElement.style.height = '100%';
+            if (isHorizontal) {
+                iframeItem.iframeElement.style.width = '100%';
+            }
+            expandIframes(iframeElement.contentDocument);
+        }
     }
 }
-
 expandIframes();

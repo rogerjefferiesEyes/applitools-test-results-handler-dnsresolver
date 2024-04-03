@@ -5,13 +5,13 @@ function setParentDimensions(element, height = 0, width = 0) {
             var parentHeight = parseInt(element.parentNode.style.height.replace('px', ''));
             if (height > 0 && ((typeof (parentHeight) == 'number' && parentHeight < height) || isNaN(parentHeight))) {
                 console.log(`Setting height for element: ${element.parentNode.tagName} to ${height}` +
-                ` (Original Height: ${isNaN(parentHeight) ? 'NOT DETECTED' : parentHeight})`);
+                    ` (Original Height: ${isNaN(parentHeight) ? 'NOT DETECTED' : parentHeight})`);
                 element.parentNode.style.height = height + 'px';
             }
             var parentWidth = parseInt(element.parentNode.style.width.replace('px', ''));
             if (width > 0 && (typeof (parentWidth) == 'number' && parentWidth < width)) {
                 console.log(`Setting width for element: ${element.parentNode.tagName} to ${width}` +
-                ` (Original Width: ${parentWidth})`);
+                    ` (Original Width: ${parentWidth})`);
                 element.parentNode.style.width = width + 'px';
             }
             setParentDimensions(element.parentNode, height, width);
@@ -20,6 +20,8 @@ function setParentDimensions(element, height = 0, width = 0) {
 }
 
 function getIframeChain(rootDocument, recursionLevel = 0) {
+    if(rootDocument == null)
+        return [];
     var childIframeChain = []
 
     var childIframeElements = rootDocument.querySelectorAll('iframe');
@@ -42,18 +44,22 @@ function getIframeChain(rootDocument, recursionLevel = 0) {
 }
 
 function expandIframes(rootDocument = document, isHorizontal = false) {
-    rootDocument.querySelector('body').style.overflow = 'auto';
-    var iframes = getIframeChain(rootDocument);
-    for (iframeItem of iframes) {
-        var iframeElement = iframeItem.iframeElement;
-        var iframeScrollHeight = iframeElement.contentDocument.querySelector('html').scrollHeight;
-        var iframeScrollWidth = isHorizontal ? iframeElement.contentDocument.querySelector('html').scrollWidth : 0;
-        setParentDimensions(iframeElement, iframeScrollHeight, iframeScrollWidth);
-        iframeElement.style.height = '100%';
-        if(isHorizontal){
-            iframeItem.iframeElement.style.width = '100%';
+    if (rootDocument) {
+        rootDocument.querySelector('body').style.overflow = 'visible';
+        var iframes = getIframeChain(rootDocument);
+        for (iframeItem of iframes) {
+            var iframeElement = iframeItem.iframeElement;
+            if(iframeElement.contentDocument == null || iframeElement.style.display == 'none')
+                continue;
+            var iframeScrollHeight = iframeElement.contentDocument.querySelector('html').scrollHeight;
+            var iframeScrollWidth = isHorizontal ? iframeElement.contentDocument.querySelector('html').scrollWidth : 0;
+            setParentDimensions(iframeElement, iframeScrollHeight, iframeScrollWidth);
+            iframeElement.style.height = '100%';
+            if (isHorizontal) {
+                iframeItem.iframeElement.style.width = '100%';
+            }
+            expandIframes(iframeElement.contentDocument);
         }
-        expandIframes(iframeElement.contentDocument);
     }
 }
 
