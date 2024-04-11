@@ -49,7 +49,7 @@ function expandIframes(rootDocument = document, isHorizontal = false) {
         var iframes = getIframeChain(rootDocument);
         for (iframeItem of iframes) {
             var iframeElement = iframeItem.iframeElement;
-            if(iframeElement.contentDocument == null || iframeElement.style.display == 'none')
+            if(iframeElement.contentDocument == null)
                 continue;
             var iframeScrollHeight = iframeElement.contentDocument.querySelector('html').scrollHeight;
             var iframeScrollWidth = isHorizontal ? iframeElement.contentDocument.querySelector('html').scrollWidth : 0;
