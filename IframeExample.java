@@ -25,23 +25,66 @@ public class IframeExample {
     public void iframeTest() {
         if (driver.findElements(By.cssSelector("#iframe2theme")).size() > 0) {
             // Get reference to iframe contentDocument
-            String brsHook = "var iframeDocument = document.querySelector('#iframe2theme').contentDocument;";
-
-            // Get iframe contentDocument scrollHeight
-            brsHook += "var iframeScrollHeight = iframeDocument.getElementsByTagName('html')[0].scrollHeight + 'px';";
-
-            // Set top-level body overflow to 'auto', to allow scrolling
-            brsHook += "document.querySelector('body').style.overflow = 'auto';";
-
-            // Set height of the <div> container around iframe2theme, to match iframe2theme
-            // scrollHeight
-            brsHook += "document.querySelector('div#cpo_iframe2').style.height = iframeScrollHeight;";
-
-            // Set iframe height to 100%, to fill its container div
-            brsHook += "document.querySelector('#iframe2theme').style.height = '100%';";
-
-            // Ultrafast Grid Visual checkpoint with beforeRenderScreenshotHook
-            eyes.check(Target.window().fully().beforeRenderScreenshotHook(brsHook));
+            String brsHook = "function setParentDimensions(element, height = 0, width = 0) {\n"
+            		+ "    if (element.parentNode != null && element.parentNode.nodeType == Node.ELEMENT_NODE) {\n"
+            		+ "        console.log(`TagName: ${element.parentNode.tagName}`)\n"
+            		+ "        if (element.parentNode.tagName.toLowerCase() != 'body') {\n"
+            		+ "            var parentHeight = parseInt(element.parentNode.style.height.replace('px', ''));\n"
+            		+ "            if (height > 0 && ((typeof (parentHeight) == 'number' && parentHeight < height) || isNaN(parentHeight))) {\n"
+            		+ "                console.log(`Setting height for element: ${element.parentNode.tagName} to ${height}` +\n"
+            		+ "                ` (Original Height: ${isNaN(parentHeight) ? 'NOT DETECTED' : parentHeight})`);\n"
+            		+ "                element.parentNode.style.height = height + 'px';\n"
+            		+ "            }\n"
+            		+ "            var parentWidth = parseInt(element.parentNode.style.width.replace('px', ''));\n"
+            		+ "            if (width > 0 && (typeof (parentWidth) == 'number' && parentWidth < width)) {\n"
+            		+ "                console.log(`Setting width for element: ${element.parentNode.tagName} to ${width}` +\n"
+            		+ "                ` (Original Width: ${parentWidth})`);\n"
+            		+ "                element.parentNode.style.width = width + 'px';\n"
+            		+ "            }\n"
+            		+ "            setParentDimensions(element.parentNode, height, width);\n"
+            		+ "        }\n"
+            		+ "    }\n"
+            		+ "}\n"
+            		+ "\n"
+            		+ "function getIframeChain(rootDocument, recursionLevel = 0) {\n"
+            		+ "    var childIframeChain = []\n"
+            		+ "\n"
+            		+ "    var childIframeElements = rootDocument.querySelectorAll('iframe');\n"
+            		+ "\n"
+            		+ "    for (childIframeElement of childIframeElements) {\n"
+            		+ "        childIframeChain.push({ iframeElement: childIframeElement, recursionLevel: recursionLevel });\n"
+            		+ "\n"
+            		+ "        // Capture child iframes recursively, preventing duplicates\n"
+            		+ "        childIframeChain = [...new Set(\n"
+            		+ "            [\n"
+            		+ "                ...childIframeChain,\n"
+            		+ "                ...getIframeChain(childIframeElement.contentDocument, recursionLevel + 1)]\n"
+            		+ "        )];\n"
+            		+ "    }\n"
+            		+ "\n"
+            		+ "    // Sort captured iframes by recursionLevel, in reverse order\n"
+            		+ "    childIframeChain.sort((a, b) => (a.recursionLevel < b.recursionLevel) ? 1 : -1);\n"
+            		+ "\n"
+            		+ "    return childIframeChain;\n"
+            		+ "}\n"
+            		+ "\n"
+            		+ "function expandIframes(rootDocument = document, isHorizontal = false) {\n"
+            		+ "    rootDocument.querySelector('body').style.overflow = 'auto';\n"
+            		+ "    var iframes = getIframeChain(rootDocument);\n"
+            		+ "    for (iframeItem of iframes) {\n"
+            		+ "        var iframeElement = iframeItem.iframeElement;\n"
+            		+ "        var iframeScrollHeight = iframeElement.contentDocument.querySelector('html').scrollHeight;\n"
+            		+ "        var iframeScrollWidth = isHorizontal ? iframeElement.contentDocument.querySelector('html').scrollWidth : 0;\n"
+            		+ "        setParentDimensions(iframeElement, iframeScrollHeight, iframeScrollWidth);\n"
+            		+ "        iframeElement.style.height = '100%';\n"
+            		+ "        if(isHorizontal){\n"
+            		+ "            iframeItem.iframeElement.style.width = '100%';\n"
+            		+ "        }\n"
+            		+ "        expandIframes(iframeElement.contentDocument);\n"
+            		+ "    }\n"
+            		+ "}\n"
+            		+ "\n"
+            		+ "expandIframes(document, true);";
         } else {
             // If iframe2theme not detected, use original call to eyes.check(...)
             eyes.check(Target.window().fully()); /* REPLACE WITH ORIGINAL CALL to eyes.check(...) */
